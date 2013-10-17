@@ -27,9 +27,9 @@ class SDbAuthManager extends CDbAuthManager {
    * with the tasks and roles assigned to the user.
    * @return boolean whether the operations can be performed by the user.
    */
-  public function checkAccess($itemName, $userId, $params=array()){
+  public function regularCheckAccess($itemName, $userId, $params=array()){
     if (!empty($this->defaultRoles) && in_array($itemName,$this->defaultRoles)) {
-      return true;
+      return 1;
     }
     $sql = "SELECT name, type, description, t1.bizrule, t1.data, t2.bizrule AS bizrule2, t2.data AS data2 FROM {$this->itemTable} t1, {$this->assignmentTable} t2 WHERE name=itemname AND user_id=:userid";
     $command = $this->db->createCommand($sql);
@@ -42,25 +42,25 @@ class SDbAuthManager extends CDbAuthManager {
       if ($this->executeBizRule($row['bizrule2'], $params, unserialize($row['data2']))
         && $this->executeBizRule($row['bizrule'], $params, unserialize($row['data']))) {
         if (strtolower($row['name']) === strtolower($itemName)) {
-          return true;
+          return 1;
         }
         $names[] = $row['name'];
       }
     }
     //checkSuperAdmin
-    if($this->checkSuperAdmin($names)) return true;
+    if($this->checkSuperAdmin($names)) return 1;
     
     //get user groups assigned roles
     $groups=Helper::getArrayGroupsUser($userId);   
     $groupNames=Helper::getGroupAssignedRoles($groups);
     foreach ($groupNames as $groupName) {
         if (strtolower($groupName['name']) === strtolower($itemName)) {
-          return true;
+          return 1;
         }
         if(!in_array($groupName['name'],$names)) $names[]=$groupName['name'];
     }
     //checkSuperAdmin
-    if($this->checkSuperAdmin($names)) return true;
+    if($this->checkSuperAdmin($names)) return 1;
     
     // check all descendant items
     while ($names !== array()) {
@@ -70,14 +70,26 @@ class SDbAuthManager extends CDbAuthManager {
         Yii::trace('Checking permission "' . $item->getName() . '"', 'system.web.auth.CDbAuthManager');
         if ($this->executeBizRule($item->getBizRule(), $params, $item->getData())) {
           if (strtolower($item->getName()) === strtolower($itemName)) {
-            return true;
+            return 1;
           }
           $names[] = $item->getName();
         }
       }
     }
-    return false;
+    return 0;
   }
+  
+  public function checkAccess($itemName, $userId, $params = array()) {
+        $checkAccessResult_id = "checkAccessResult_" . $itemName . $userId . (!empty($params) ? md5(serialize($params)) : 0);
+        $checkAccessResult = Yii::app()->cache->get($checkAccessResult_id);
+        if ($checkAccessResult === false) {
+            $checkAccessResult = $this->regularCheckAccess($itemName, $userId, $params);
+            Yii::app()->cache->set($checkAccessResult_id, $checkAccessResult, 180);
+        }
+        return $checkAccessResult ? true : false;
+    }
+
+
   /**
    * Return true if $name have superUser
    * @param array $names
