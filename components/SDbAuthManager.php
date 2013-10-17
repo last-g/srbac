@@ -80,7 +80,7 @@ class SDbAuthManager extends CDbAuthManager {
   }
   
   public function checkAccess($itemName, $userId, $params = array()) {
-        $checkAccessResult_id = "checkAccessResult_" . $itemName . $userId . (!empty($params) ? md5(serialize($params)) : 0);
+        $checkAccessResult_id = "checkAccessResult_" . $itemName . '_' . $userId . '_' . (!empty($params) ? md5(serialize($params)) : 0);
         $checkAccessResult = Yii::app()->cache->get($checkAccessResult_id);
         if ($checkAccessResult === false) {
             $checkAccessResult = $this->regularCheckAccess($itemName, $userId, $params);
