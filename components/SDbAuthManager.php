@@ -84,7 +84,7 @@ class SDbAuthManager extends CDbAuthManager {
         $checkAccessResult = Yii::app()->cache->get($checkAccessResult_id);
         if ($checkAccessResult === false) {
             $checkAccessResult = $this->regularCheckAccess($itemName, $userId, $params);
-            Yii::app()->cache->set($checkAccessResult_id, $checkAccessResult, 180);
+            Yii::app()->cache->set($checkAccessResult_id, $checkAccessResult, Yii::app()->params['checkAccessCacheDuration']);
         }
         return $checkAccessResult ? true : false;
     }
